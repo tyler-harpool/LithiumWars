@@ -3,7 +3,7 @@
 export type Faction = 'mechanist' | 'luminari' | 'swarmborn' | 'neutral';
 export type CardType = 'unit' | 'building' | 'effect' | 'spell' | 'primary' | 'secondary';
 export type Rarity = 'common' | 'rare' | 'legendary';
-
+import { GAME_VIDEOS } from '@/lib/media';
 export interface Card {
   id: string;
   name: string;
@@ -42,7 +42,7 @@ export interface BuildQueueItem {
   startTime: number;
   buildTime: number;
   progress: number;
-  isUpgrade?: boolean; // Indicates if this item is an upgrade
+  isUpgrade?: boolean;
 }
 
 
@@ -84,6 +84,11 @@ export interface GameState {
 
   // Game Loop
   gameLoop: () => void;
+  // Video playback
+  currentVideo: string | null;
+  isVideoPlaying: boolean;
+  playVideo: (videoKey: keyof typeof GAME_VIDEOS) => void;
+  endVideo: () => void;
 }
 
 
@@ -103,12 +108,12 @@ export interface Effect {
 
 export const CARD_IMAGES = {
   units: {
-    'basic-infantry': '/images/units/basic-infantry.png',
-    'steel-tank': '/images/units/steel-tank.png',
-    'crystal-guard': '/images/units/crystal-guard.png'
+    'basic-infantry': '/images/units/basic-infantry.webp',
+    'steel-tank': '/images/units/steel-tank.webp',
+    'crystal-guard': '/images/units/crystal-guard.webp'
   },
   resources: {
-    'primary-generator': '/images/resources/primary-generator.png',
-    'advanced-generator': '/images/resources/advanced-generator.png'
+    'primary-generator': '/images/resources/primary-generator.webp',
+    'advanced-generator': '/images/resources/advanced-generator.webp'
   }
 } as const;

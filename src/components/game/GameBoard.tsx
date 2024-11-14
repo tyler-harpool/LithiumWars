@@ -6,11 +6,16 @@ import { PlayerHand } from './PlayerHand';
 import { CardField } from './CardField';
 import { ResourceDisplay } from './ResourceDisplay';
 import { useGameStore } from '@/lib/stores/gameStore';
+
 import { Button } from '@/components/ui/button';
 import { Timer } from './Timer';
 import { BuildQueue } from './BuildQueue';
 import { Card, ResourceCard } from '@/lib/types/game';
 import { cn } from '@/lib/utils';
+
+import { Card, ResourceCard, GameState, BuildQueueItem } from '@/lib/types/game';
+import { soundManager, GAME_VIDEOS } from '@/lib/media';
+import { VideoOverlay } from './VideoOverlay';
 
 export function GameBoard() {
   const {
@@ -28,14 +33,21 @@ export function GameBoard() {
     addSecondaryResource,  // Note the singular form
     actionsRemaining,
     primaryResource,
-    gameLoop
+    gameLoop,
+    currentVideo,
+    isVideoPlaying,
+    endVideo,
+    playVideo
   } = useGameStore();
 
   const [timerKey, setTimerKey] = useState(0);
 
-  // Run game loop every 100ms
+  // In your GameBoard component
   useEffect(() => {
-    const interval = setInterval(gameLoop, 100);
+    const interval = setInterval(() => {
+      gameLoop();
+    }, 100); // Update every 100ms
+
     return () => clearInterval(interval);
   }, [gameLoop]);
 
@@ -44,40 +56,52 @@ export function GameBoard() {
   }, [currentPhase]);
 
 
+  // Initialize game with intro video
+  // Play intro video when game starts
+  useEffect(() => {
+    const playIntro = async () => {
+      playVideo('INTRO');
+    };
+    playIntro();
+  }, [playVideo]);
 
 
   const handleCardClick = useCallback((card: Card | ResourceCard) => {
-    console.log('Card clicked:', card);
+      console.log('Card clicked:', card);
 
-    if (actionsRemaining <= 0 || currentPhase !== 'main') {
-      console.log('Cannot play card - no actions or wrong phase');
-      return;
-    }
+      if (actionsRemaining <= 0 || currentPhase !== 'main') {
+        console.log('Cannot play card - no actions or wrong phase');
+        soundManager.play('ERROR');
+        return;
+      }
 
-    if ('type' in card && (card.type === 'primary' || card.type === 'secondary')) {
-      console.log('Playing resource card');
-      handleResourceCardUse(card);
-      return;
-    }
+      if ('type' in card && (card.type === 'primary' || card.type === 'secondary')) {
+        console.log('Playing resource card');
+        handleResourceCardUse(card);
+        soundManager.play('RESOURCE_GAIN');
+        return;
+      }
 
-    if (card.cost > primaryResource) {
-      console.log('Not enough resources');
-      return;
-    }
+      if (card.cost > primaryResource) {
+        console.log('Not enough resources');
+        soundManager.play('ERROR');
+        return;
+      }
 
-    const emptySlot = playerField.findIndex(slot => slot === null);
-    if (emptySlot !== -1) {
-      console.log('Adding card to build queue:', emptySlot);
-      addToBuildQueue(card, emptySlot);
-    }
-  }, [
-    actionsRemaining,
-    currentPhase,
-    primaryResource,
-    playerField,
-    handleResourceCardUse,
-    addToBuildQueue
-  ]);
+      const emptySlot = playerField.findIndex(slot => slot === null);
+      if (emptySlot !== -1) {
+        console.log('Adding card to build queue:', emptySlot);
+        addToBuildQueue(card, emptySlot);
+        soundManager.play('CARD_PLAY');
+      }
+    }, [
+      actionsRemaining,
+      currentPhase,
+      primaryResource,
+      playerField,
+      handleResourceCardUse,
+      addToBuildQueue
+    ]);
 
   const handleAttack = useCallback((attackerPos: number) => {
     if (actionsRemaining > 0 && currentPhase === 'combat') {
@@ -96,8 +120,9 @@ export function GameBoard() {
 
   const handleTimeUp = useCallback(() => {
     console.log('Time is up!');
-    addPrimaryResource(2);     // Updated method name
-    addSecondaryResource(1);   // Updated method name
+    soundManager.play('ROUND_END');
+    addPrimaryResource(2);
+    addSecondaryResource(1);
     endTurn();
   }, [addPrimaryResource, addSecondaryResource, endTurn]);
 
@@ -144,7 +169,14 @@ export function GameBoard() {
             </div>
           ))}
         </div>
-
+        {/* Video Overlay */}
+        {currentVideo && isVideoPlaying && (
+          <VideoOverlay
+            videoSrc={currentVideo}
+            onComplete={endVideo}
+            canSkip={true}
+          />
+        )}
         {/* Center Line */}
         <div className="h-px bg-gradient-to-r from-transparent via-slate-700/50 to-transparent my-2" />
 
@@ -217,11 +249,18 @@ export function GameBoard() {
       </div>
 
       {/* Combat Phase Overlay */}
-      {currentPhase === 'combat' && (
-        <div className="fixed inset-0 pointer-events-none">
-          <div className="absolute inset-0 bg-gradient-to-t from-red-900/10 to-transparent" />
-        </div>
-      )}
+      <Button
+        size="lg"
+        onClick={() => {
+          console.log('Resolving combat');
+          resolveCombat();
+          soundManager.play('COMBAT_HIT');
+          endCombatPhase();
+        }}
+        className="bg-red-500 hover:bg-red-600 text-white font-medium"
+      >
+        Resolve Combat
+      </Button>
 
       <Timer initialTime={15} onTimeUp={handleTimeUp} key={timerKey} />
 
@@ -229,7 +268,14 @@ export function GameBoard() {
       <div className="fixed bottom-6 left-6 flex gap-2">
         <Button
           size="lg"
-          onClick={drawCard}
+          onClick={() => {
+            if (currentPhase === 'main' && actionsRemaining > 0) {
+              drawCard();
+              soundManager.play('CARD_DRAW');
+            } else {
+              soundManager.play('ERROR');
+            }
+          }}
           disabled={currentPhase !== 'main' || actionsRemaining === 0}
           className="bg-blue-500 hover:bg-blue-600 text-white font-medium"
         >
