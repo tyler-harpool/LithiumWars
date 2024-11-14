@@ -16,7 +16,7 @@ import { cn } from '@/lib/utils';
 import { Card, ResourceCard, GameState, BuildQueueItem } from '@/lib/types/game';
 import { soundManager, GAME_VIDEOS } from '@/lib/media';
 import { VideoOverlay } from './VideoOverlay';
-
+import { BuildMenu } from './BuildMenu';
 export function GameBoard() {
   const {
     playerField,
@@ -247,7 +247,8 @@ export function GameBoard() {
           </Button>
         )}
       </div>
-
+     {/* Build Menu */}
+      <BuildMenu />
       {/* Combat Phase Overlay */}
       <Button
         size="lg"

@@ -89,6 +89,10 @@ export interface GameState {
   isVideoPlaying: boolean;
   playVideo: (videoKey: keyof typeof GAME_VIDEOS) => void;
   endVideo: () => void;
+
+  //handle tech tree
+  researchedTech: Set<string>;
+  unlockedUnits: Set<string>;
 }
 
 
